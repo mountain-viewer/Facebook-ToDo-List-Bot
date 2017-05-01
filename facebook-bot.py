@@ -10,8 +10,8 @@ from utils import *
 application = Flask(__name__)
 app = application
 
-PageAccessToken = 'EAAGa5ZB7WAScBAKsdOXmLZCwjOA4rGwqv209VnUutSZCPDerAIr6u1k86KlpTDgtZBLAW1rZC8RWHGbrpMk9PB1atLFtosDLwjx7tTs4MkgC0p8YO0I0dqv6P4aJZCM6aS8X0F1zsbsmhkUcf6DcOXeXqUK3Kskj6o0a0TLdZBZAXwbtjWSjWDQv'
-VerificationToken = 'Mountain Viewer'
+PageAccessToken = 'SECURED'
+VerificationToken = 'SECURED'
 
 deadline_db = dict()
 info_shown = set()

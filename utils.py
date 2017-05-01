@@ -12,7 +12,7 @@ class Deadline:
   def __repr__(self):
     time_tuple = (self.deadline.tm_mday, self.deadline.tm_mon, self.deadline.tm_year)
 
-    return "\n(" + "Title: " + self.name + "\n" +  "ID: "+ str(self.id) + "\n" + "Deadline: " + str(time_tuple) + ")\n"
+    return "\n(Title: {0}\n ID: {1}\n Deadline: {2})\n".format(self.name, str(self.id), str(time_tuple))
 
 
 class DeadlineCollection:
