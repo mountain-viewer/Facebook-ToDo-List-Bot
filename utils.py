@@ -1,80 +1,59 @@
-class Deadline:
+import json, datetime
+from threading import Event, Thread
+import time
 
-  deadline_count = 0
+class RepeatedTimer:
 
-  def __init__(self, name, deadline):
-    Deadline.deadline_count += 1
+    """Repeat `function` every `interval` seconds."""
 
-    self.name = name
-    self.deadline = deadline
-    self.id = Deadline.deadline_count
+    def __init__(self, interval, function, *args, **kwargs):
+        self.interval = interval
+        self.function = function
+        self.args = args
+        self.kwargs = kwargs
+        self.start = time.time()
+        self.event = Event()
+        self.thread = Thread(target=self._target)
+        self.thread.start()
 
-  def __repr__(self):
-    time_tuple = (self.deadline.tm_mday, self.deadline.tm_mon, self.deadline.tm_year)
+    def _target(self):
+        while not self.event.wait(self._time):
+            self.function(*self.args, **self.kwargs)
 
-    return "\n(Title: {0}\n ID: {1}\n Deadline: {2})\n".format(self.name, str(self.id), str(time_tuple))
+    @property
+    def _time(self):
+        return self.interval - ((time.time() - self.start) % self.interval)
 
+    def stop(self):
+        self.event.set()
+        self.thread.join()
 
-class DeadlineCollection:
+class Response:
+    def __init__(self, deadlines):
+        self.deadlines = deadlines
 
-  def __init__(self):
-    self.deadline_buffer = []
+    def __repr__(self):
+        if len(self.deadlines) == 0:
+            return "[]"
 
-  def __len__(self):
-    return len(self.deadline_buffer)
+        formatted_deadline = datetime.datetime.fromtimestamp(self.deadlines[0]["deadline"]).strftime("%d/%m/%y")
 
-  def sort(self):
-    self.deadline_buffer.sort(key=lambda x: x.deadline)
+        response = "[\n  (Title: {0}\n   ID: {1}\n   Deadline: {2})".format(self.deadlines[0]["title"],
+                                                                            self.deadlines[0]["id"],
+                                                                            formatted_deadline)
 
-  def add(self, name, deadline):
-    try:
-      self.deadline_buffer.append(Deadline(name, deadline))
-      return True
-    except Exception:
-      return False
+        for i in range(1, len(self.deadlines)):
+            formatted_deadline = datetime.datetime.fromtimestamp(self.deadlines[i]["deadline"]).strftime("%d/%m/%y")
+            response += ",\n  (Title: {0}\n   ID: {1}\n   Deadline: {2})".format(self.deadlines[i]["title"],
+                                                                                 self.deadlines[i]["id"],
+                                                                                 formatted_deadline)
 
-  def remove(self, id):
-    found_deadline = -1
+        response += "\n]"
 
-    for i in range(len(self.deadline_buffer)):
-      if self.deadline_buffer[i].id == id:
-        found_deadline = i
-        break
+        return response
 
-    if found_deadline != -1:
-      del self.deadline_buffer[found_deadline]
-      return True
-
-    return False
-
-  def list(self):
-    return self.deadline_buffer
-
-  def rename(self, id, new_name):
-    for i in range(len(self.deadline_buffer)):
-      if self.deadline_buffer[i].id == id:
-        self.deadline_buffer[i].name = new_name
-        return True
-
-    return False
-
-  def set_deadline(self, id, new_deadline):
-    for i in range(len(self.deadline_buffer)):
-      if self.deadline_buffer[i].id == id:
-        self.deadline_buffer[i].deadline = new_deadline
-        return True
-
-    return False
-
-  def done(self, id):
-    found_deadline = -1
-
-    for i in range(len(self.deadline_buffer)):
-      if self.deadline_buffer[i].id == id:
-        found_deadline = i
-
-    if found_deadline != -1:
-      del self.deadline_buffer[found_deadline]
-      return True
-
-    return False
+class SetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        return json.JSONEncoder.default(self, obj)
