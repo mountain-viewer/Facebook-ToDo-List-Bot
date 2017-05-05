@@ -1,4 +1,8 @@
 __pycache__/
 facebook-echobot/
 ngrok
-
+facebookAPI.py
+tokens.py
+storage.db
+user.db
+system.log
