@@ -9,10 +9,10 @@ from utils import *
 from billing import *
 
 # ======================= System messages ======================
-info_message1 = """
+INFO_MESSAGE1 = """
   This is the TODO-list bot by Mountain Viewer.\n\n"""
 
-info_message2 = """
+INFO_MESSAGE2 = """
     Use the following commands to put in order your deadlines:\n
     1) 'add <deadline name> dd/mm/yy' -- to put new deadline into list\n
     2) 'remove <deadline id>' -- to remove an existing deadline\n
@@ -22,9 +22,8 @@ info_message2 = """
     6) 'done <deadline id>' -- to mark an existing deadline as completed\n\n
     7) 'help' -- to show the commands"""
 
-info_message3 = """
-    And remember: it is in your interest to see the correct work of the bot - so there is
-    no need to try to break it! :)"""
+INFO_MESSAGE3 = """
+    And remember: it is in your interest to see the correct work of the bot - so there is no need to try to break it! :)"""
 
 # ======================= System configuration =======================
 app = Flask(__name__)
@@ -49,7 +48,7 @@ if os.stat(storage_db).st_size != 0:
     deadline_db = read_from_storage()
 
 # start timer
-timer = RepeatedTimer(10, dump)
+timer = RepeatedTimer(1200, dump)
 
 # ======================= Verification =======================
 @app.route('/', methods=['GET'])
@@ -84,7 +83,7 @@ def handle_messages():
             else:
                 send_message(PageAccessToken, sender_id, "Sorry I don't understand that")
         except Exception:
-            traceback.print_exc()
+            logging.exception(traceback.format_exc)
 
     return "ok"
 
@@ -92,9 +91,9 @@ def update_deadlines(user_id, response):
     logging.info("Operating with user: {0}.".format(user_id))
 
     if user_id not in user_db:
-        send_message(PageAccessToken, user_id, info_message1)
-        send_message(PageAccessToken, user_id, info_message2)
-        send_message(PageAccessToken, user_id, info_message3)
+        send_message(PageAccessToken, user_id, INFO_MESSAGE1)
+        send_message(PageAccessToken, user_id, INFO_MESSAGE2)
+        send_message(PageAccessToken, user_id, INFO_MESSAGE3)
         user_db.add(user_id)
 
     parsed_response = response.decode('UTF-8').split()
@@ -130,7 +129,7 @@ def update_deadlines(user_id, response):
         if status:
             deadline_db[user_id].pop(index)
 
-        return "Your deadline has been removed." if status else "Operation could not be executed."
+        return "Your deadline has been removed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
     elif parsed_response[0].lower() == 'list':
         if user_id in deadline_db:
             deadline_db[user_id].sort(key=operator.itemgetter("deadline"))
@@ -150,7 +149,7 @@ def update_deadlines(user_id, response):
                     status = True
                     break
 
-        return "Your deadline has been renamed." if status else "Operation could not be executed."
+        return "Your deadline has been renamed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
     elif parsed_response[0].lower() == 'set_deadline':
         status = False
 
@@ -161,7 +160,7 @@ def update_deadlines(user_id, response):
                     status = True
                     break
 
-        return "Your deadline has been rescheduled." if status else "Operation could not be executed."
+        return "Your deadline has been rescheduled." if status else "There is no deadline with {0} id.".format(parsed_response[1])
     elif parsed_response[0].lower() == 'done':
         status = False
         index = -1
@@ -175,9 +174,9 @@ def update_deadlines(user_id, response):
 
         if status:
             deadline_db[user_id].pop(index)
-        return "Your deadline has been marked as completed." if status else "Operation could not be executed."
+        return "Your deadline has been marked as completed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
     elif parsed_response[0].lower() == 'help':
-        return info_message2
+        return INFO_MESSAGE2
     else:
         return "Incorrect request!"
 
@@ -202,7 +201,7 @@ def send_message(token, user_id, text):
                         headers={'Content-type': 'application/json'})
 
     if r.status_code != requests.codes.ok:
-        print(r.text)
+        logging.warning(r.text)
 
 # ======================= Notification System =======================
 
@@ -210,11 +209,10 @@ def notify():
     logging.info("Notification Center is working.")
     for user in deadline_db.keys():
         deadline_db[user].sort(key=operator.itemgetter("deadline"))
-        send_message(PageAccessToken, user, "Your deadlines in the future time.")
+        send_message(PageAccessToken, user, "Your deadlines in the future.")
         send_message(PageAccessToken, user, Response(deadline_db[user]))
 
-notification_center = RepeatedTimer(21600, notify)
-
+notification_center = RepeatedTimer(600, notify)
 
 # Generate tuples of (sender_id, message_text) from the provided payload.
 # This part technically clean up received data to pass only meaningful data to processIncoming() function
