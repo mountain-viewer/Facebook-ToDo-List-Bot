@@ -1,6 +1,6 @@
 # Facebook-ToDo-List-Bot
 
-## Prerequisites
+## Description
 The **Facebook Bot for Facebook Messenger** helps you organize your daily life.<br>
 <br>The project was created as part of the home assignment during the Python course at MIPT University.<br>
 
@@ -16,4 +16,4 @@ The following commands are available:
 * **```help```**<br> To show the list of possible commands. <br><br>
 
 ## Screenshots
-<img src="https://imagebin.ca/v/3LSqj4CZlzE0" width="220"/>
+<img src="https://ibin.co/3LSqj4CZlzE0.jpg" width="220"/>
