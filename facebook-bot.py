@@ -76,7 +76,7 @@ def handle_messages():
                 continue
 
             response = process_incoming(message)
-            result = update_deadlines(sender_id, response)
+            result = process_requests(sender_id, response)
 
             if result is not None:
                 send_message(PageAccessToken, sender_id, result)
@@ -87,7 +87,101 @@ def handle_messages():
 
     return "ok"
 
-def update_deadlines(user_id, response):
+def add(user_id, parsed_response):
+    title = parsed_response[1]
+    for i in range(2, len(parsed_response) - 1):
+        title += " {0}".format(parsed_response[i])
+
+    if user_id not in deadline_db:
+        deadline_db[user_id] = []
+
+    deadline = dict()
+
+    deadline["title"] = title
+    deadline["id"] = len(deadline_db[user_id]) + 1
+    deadline["deadline"] = time.mktime(time.strptime(parsed_response[len(parsed_response) - 1], "%d/%m/%y"))
+
+    deadline_db[user_id].append(deadline)
+
+    return "Your deadline has been added."
+
+def remove(user_id, parsed_response):
+    status = False
+    index = -1
+
+    if user_id in deadline_db:
+        for i in range(len(deadline_db[user_id])):
+            if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
+                index = i
+                status = True
+                break
+
+    if status:
+        deadline_db[user_id].pop(index)
+
+    return "Your deadline has been removed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
+
+def show_list(user_id, parsed_response):
+    if user_id in deadline_db:
+        deadline_db[user_id].sort(key=operator.itemgetter("deadline"))
+        return Response(deadline_db[user_id])
+    return []
+
+def rename(user_id, parsed_response):
+    title = parsed_response[2]
+    for i in range(3, len(parsed_response)):
+        title += " {0}".format(parsed_response[i])
+
+    status = False
+
+    if user_id in deadline_db:
+        for i in range(len(deadline_db[user_id])):
+            if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
+                deadline_db[user_id][i]["title"] = title
+                status = True
+                break
+
+    return "Your deadline has been renamed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
+
+def set_deadline(user_id, parsed_response):
+    status = False
+
+    if user_id in deadline_db:
+        for i in range(len(deadline_db[user_id])):
+            if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
+                deadline_db[user_id][i]["deadline"] = time.mktime(time.strptime(parsed_response[2], "%d/%m/%y"))
+                status = True
+                break
+
+    return "Your deadline has been rescheduled." if status else "There is no deadline with {0} id.".format(parsed_response[1])
+
+def done(user_id, parsed_response):
+    status = False
+    index = -1
+
+    if user_id in deadline_db:
+        for i in range(len(deadline_db[user_id])):
+            if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
+                index = i
+                status = True
+                break
+
+    if status:
+        deadline_db[user_id].pop(index)
+    return "Your deadline has been marked as completed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
+
+def get_help(user_id, parsed_response):
+    return INFO_MESSAGE2
+
+commands = {"add" : add,
+            "remove" : remove,
+            "list" : show_list,
+            "rename" : rename,
+            "set_deadline" : set_deadline,
+            "done" : done,
+            "help" : get_help}
+
+def process_requests(user_id, response):
     logging.info("Operating with user: {0}.".format(user_id))
 
     if user_id not in user_db:
@@ -98,85 +192,10 @@ def update_deadlines(user_id, response):
 
     parsed_response = response.decode('UTF-8').split()
 
-    if parsed_response[0].lower() == 'add':
-        title = parsed_response[1]
-        for i in range(2, len(parsed_response) - 1):
-            title += " " + parsed_response[i]
+    command_name = parsed_response[0].lower()
 
-        if user_id not in deadline_db:
-            deadline_db[user_id] = []
-
-        deadline = dict()
-
-        deadline["title"] = title
-        deadline["id"] = len(deadline_db[user_id]) + 1
-        deadline["deadline"] = time.mktime(time.strptime(parsed_response[len(parsed_response) - 1], "%d/%m/%y"))
-
-        deadline_db[user_id].append(deadline)
-
-        return "Your deadline has been added."
-    elif parsed_response[0].lower() == 'remove':
-        status = False
-        index = -1
-
-        if user_id in deadline_db:
-            for i in range(len(deadline_db[user_id])):
-                if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
-                    index = i
-                    status = True
-                    break
-
-        if status:
-            deadline_db[user_id].pop(index)
-
-        return "Your deadline has been removed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
-    elif parsed_response[0].lower() == 'list':
-        if user_id in deadline_db:
-            deadline_db[user_id].sort(key=operator.itemgetter("deadline"))
-            return Response(deadline_db[user_id])
-        return []
-    elif parsed_response[0].lower() == 'rename':
-        title = parsed_response[2]
-        for i in range(3, len(parsed_response)):
-            title += " " + parsed_response[i]
-
-        status = False
-
-        if user_id in deadline_db:
-            for i in range(len(deadline_db[user_id])):
-                if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
-                    deadline_db[user_id][i]["title"] = title
-                    status = True
-                    break
-
-        return "Your deadline has been renamed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
-    elif parsed_response[0].lower() == 'set_deadline':
-        status = False
-
-        if user_id in deadline_db:
-            for i in range(len(deadline_db[user_id])):
-                if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
-                    deadline_db[user_id][i]["deadline"] = time.mktime(time.strptime(parsed_response[2], "%d/%m/%y"))
-                    status = True
-                    break
-
-        return "Your deadline has been rescheduled." if status else "There is no deadline with {0} id.".format(parsed_response[1])
-    elif parsed_response[0].lower() == 'done':
-        status = False
-        index = -1
-
-        if user_id in deadline_db:
-            for i in range(len(deadline_db[user_id])):
-                if deadline_db[user_id][i]["id"] == int(parsed_response[1]):
-                    index = i
-                    status = True
-                    break
-
-        if status:
-            deadline_db[user_id].pop(index)
-        return "Your deadline has been marked as completed." if status else "There is no deadline with {0} id.".format(parsed_response[1])
-    elif parsed_response[0].lower() == 'help':
-        return INFO_MESSAGE2
+    if command_name in commands:
+        return commands[command_name](user_id, parsed_response)
     else:
         return "Incorrect request!"
 
